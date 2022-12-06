@@ -45,5 +45,5 @@ ordinals = ordinals.merge(output, on=["team_id", "year", "day"], how="left")
 ordinals["pagerank"] = ordinals["pagerank"]*10000
 
 # export
-ordinals.to_csv("data/clean/inputs/stats.csv", index=False)
+ordinals.to_csv("data/clean/inputs/independent_vars.csv", index=False)
 
