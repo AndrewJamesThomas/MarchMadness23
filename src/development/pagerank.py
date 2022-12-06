@@ -27,25 +27,23 @@ def get_page_rank(year, game, data=df):
     return page_rank
 
 
+first_dataframe = True
+output = None
 # Loop through years and add page rank
 for y in ordinals["year"].unique():
     # loop through games
     for g in ordinals["day"].unique():
         print(f"Working on: year {y}/2022 game {g}/133.", end="\r")
         page_rank = get_page_rank(year=y, game=g)
-        ordinals = ordinals\
-            .merge(page_rank, on=["year", "day", "team_id"], how="left")
-        for t in page_rank["team_id"].unique():
-            ordinals\
-                [(ordinals['year'] == y) &
-                 (ordinals["day"] == g) *
-                 (ordinals['team_id'] == t)]\
-                ["pagerank"] = page_rank[page_rank["team_id"] == t]["pagerank"]
+        if first_dataframe:
+            output = page_rank.copy()
+            first_dataframe = False
+        else:
+            output = output.append(page_rank)
 
-# explore relationships between ordinal rankings and page ranks
-# we expect them to be very similiar but not exactly the same
-# unclear if the relationship will be positive or negative
+ordinals = ordinals.merge(output, on=["team_id", "year", "day"], how="left")
+ordinals["pagerank"] = ordinals["pagerank"]*10000
 
-
-
+# export
+ordinals.to_csv("data/clean/inputs/stats.csv", index=False)
 
