@@ -28,7 +28,6 @@ def run_elo(year, day, winner, looser, k=10):
     # get elo values
     el1 = get_elo(year, day, winner)
     el2 = get_elo(year, day, looser)
-
     if el1 != -1 and el2 != -1:
         # convert to probabilities
         winner_proba = get_expected_value(el1, el2)
@@ -48,25 +47,28 @@ def run_elo(year, day, winner, looser, k=10):
                 (elo["team_id"] == looser),
                 "elo"] = el2_new
 
+    return elo
+
 
 # PART II: import data
-
 stats = pd.read_csv("data/clean/inputs/independent_vars.csv")
 
 df = pd.read_csv("data/clean/inputs/game_results.csv")
 df = df[["year", "day", "winner_team_id", "looser_team_id"]]
+df = df.query("year >= 2017").reset_index(drop=True)
 
 # initialize elo ratings
 elo = stats[["year", "day", "team_id"]]
 elo["elo"] = 1000
 
-
 # PART III: run calculations
-run_elo(2021, 90, 1114, 1211)
-
-for i in range(0, max(df.index)):
+for i in range(0, max(df.index)-1):
     completion = round(i/max(df.index)*100, 2)
-    print(f"Progress: {completion}%", end="\r")
-    row = df.iloc[0]
-    run_elo(row["year"], row["day"], row["winner_team_id"], row["looser_team_id"])
+    print(f"Progress: {completion}% Complete", end="\r")
+    row = df.iloc[i]
+    elo = run_elo(row["year"], row["day"], row["winner_team_id"], row["looser_team_id"], k=24)
+
+# PART IV: Save results back to hard drive
+stats = stats.merge(elo, on=["year", "day", "team_id"])
+stats.to_csv("data/clean/inputs/independent_vars.csv", index=False)
 
