@@ -4,6 +4,8 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from sklearn.metrics import log_loss, accuracy_score, roc_auc_score
 from scipy.stats import uniform
+import xgboost as xgb
+
 
 # import data
 x_df = pd.read_csv("data/clean/inputs/independent_vars.csv")
@@ -29,6 +31,7 @@ model_1 = LogisticRegression()
 model_1.fit(x_train, y_train)
 proba_1 = model_1.predict_proba(x_test)[:, 1]
 results_1 = log_loss(y_test, proba_1)
+print(results_1)
 
 # model 2: regularized lasso regression
 grid_2 = {"C": uniform()}
@@ -37,14 +40,16 @@ srch_2 = RandomizedSearchCV(model_2, grid_2, scoring="neg_log_loss", cv=10, verb
 srch_2.fit(x_train, y_train)
 proba_2 = srch_2.predict_proba(x_test)[:, 1]
 results_2 = log_loss(y_test, proba_2)
+print(results_2)
 
-# model 3: regularized lasso regression
+# model 3: regularized Ridge regression
 grid_3 = {"C": uniform()}
 model_3 = LogisticRegression(penalty="l2", solver="liblinear")
 srch_3 = RandomizedSearchCV(model_3, grid_3, scoring="neg_log_loss", cv=10, verbose=9)
 srch_3.fit(x_train, y_train)
 proba_3 = srch_3.predict_proba(x_test)[:, 1]
 results_3 = log_loss(y_test, proba_3)
+print(results_3)
 
 # model 4: elasticnet
 grid_4 = {"C": uniform(), "l1_ratio": uniform()}
@@ -53,6 +58,7 @@ srch_4 = RandomizedSearchCV(model_4, grid_4, scoring="neg_log_loss", cv=10, verb
 srch_4.fit(x_train, y_train)
 proba_4 = srch_4.predict_proba(x_test)[:, 1]
 results_4 = log_loss(y_test, proba_4)
+print(results_4)
 
 # model 5: decision tree
 grid_5 = {"max_depth": [3, 4, 5, 6, 7, 8]}
@@ -61,3 +67,21 @@ srch_5 = RandomizedSearchCV(model_5, grid_5, scoring="neg_log_loss", cv=10, verb
 srch_5.fit(x_train, y_train)
 proba_5 = srch_5.predict_proba(x_test)[:, 1]
 results_5 = log_loss(y_test, proba_5)
+print(results_5)
+
+# Model 6: XGBoost
+grid_6 = {
+    "colsample_bytree": uniform(0.7, 0.3),
+    "gamma": uniform(0, 0.5),
+    "learning_rate": uniform(0.03, 0.3), # default 0.1
+    "max_depth": [2, 3, 4, 5, 6], # default 3
+    "n_estimators": [100, 120, 140, 160, 180, 200], # default 100
+    "subsample": uniform(0.6, 0.4)
+}
+model_6 = xgb.XGBClassifier(objective="binary:logistic", random_state=RANDOM_SEED)
+srch_6 = RandomizedSearchCV(model_6, grid_6, scoring="neg_log_loss", cv=10, verbose=9)
+srch_6.fit(x_train, y_train)
+
+proba_6 = srch_6.predict_proba(x_test)[:, 1]
+results_6 = log_loss(y_test, proba_6)
+print(results_6)
