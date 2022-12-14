@@ -33,6 +33,8 @@ df1.columns = ['year', 'day', 'team_id', 'x_score',
                'y_assists', 'y_turnovers', 'y_steals', 'y_blocks',
                'y_personal_fouls']
 
+df1["win_ind"] = True
+
 # df2: the same thing but the fields are all switched. (so looser is no "y_", etc)
 df2 = df[['year', 'day', 'looser_team_id', 'winner_score',
           'looser_score', 'winner_field_goals_made',
@@ -61,17 +63,31 @@ df2.columns = ['year', 'day', 'team_id', 'y_score',
                'x_offensive_rebounds', 'x_defensive_rebounds',
                'x_assists', 'x_turnovers', 'x_steals', 'x_blocks',
                'x_personal_fouls']
+df2["win_ind"] = False
 
 # append these two dataframes together. So each team appears as both an "x_" and a "y_" for each game
 df_main = df1.append(df2)
 
 # Part 2: Loop through the 'stats' data.
+FIRST_ITER = True
 # for each year/day/team get aggregate stats up until that game.
-
-
-# agg stats should include: avg, std, min, max, win_ratio, etc. for both the team and their opponent
+for DAY in range(df["day"].min(), df["day"].max()):
+    completion = DAY/df["day"].max()
+    print(f"{completion*100:.1f}% Complete", end="\r")
+    # agg stats should include: avg, std, min, max, win_ratio, etc. for both the team and their opponent
+    sub = df_main[(df_main["day"] < DAY)]
+    sub = sub.groupby(["year", "team_id"]).mean()
+    sub = sub.reset_index()
+    sub["day"] = DAY
+    if FIRST_ITER:
+        output = sub.copy()
+        FIRST_ITER = False
+    else:
+        output = output.append(sub)
 
 # join these aggregates to the stats dataframe and the location they were extracted from
+stats = stats.merge(output, on=["year", "day", "team_id"], how="left")
 
 # part 3: save
 # save back and remodel
+stats.to_csv("data/clean/inputs/independent_vars.csv", index=False)
