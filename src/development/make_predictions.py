@@ -20,3 +20,13 @@ submission["Pred"] = model.predict_proba(df)[:, 1]
 
 # save predictions
 submission.to_csv("data/clean/prediction_submissions.csv", index=False)
+
+# create rectangular prediction matrix
+# TODO: fill in the missing side of the rectangle with inverse predictions
+# TODO: Test predictions with Kaggle late submission(?)
+rect = submission["ID"]\
+    .str.split("_", expand=True)\
+    .rename(columns={0: "year", 1: "T1", 2: "T2"})\
+    .join(submission) \
+    .drop(["year", "ID"], axis=1)\
+    .pivot(index="T1", columns="T2", values="Pred")
