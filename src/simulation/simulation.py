@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from tqdm import tqdm
 import warnings
 warnings.simplefilter(action='ignore')
 
@@ -20,7 +21,6 @@ def select_winner(team_1, team_2, pred=pred):
 def run_tourney(input_data):
     data = input_data.copy()
     for i in range(0, len(data)):
-        print(i)
         row = data.iloc[i, :].copy()
         if row[["team_1"]].isnull().values[0]:
             row[["team_1"]] = data[data["ID"] == row["prev_game_1"]]["winner"]
@@ -31,12 +31,19 @@ def run_tourney(input_data):
             # select winner
             row["winner"] = select_winner(row["team_1"], row["team_2"])
         data.iloc[i, :] = row
-    return data[['ID', "winner"]]
+    return data[['ID', "winner"]].set_index("ID")
 
 
-outcome = run_tourney(df)
+def repeat_simulation(n, data=df):
+    for i in tqdm(range(n)):
+        if i == 0:
+            outcome = run_tourney(data).T
+        else:
+            outcome = outcome.append(run_tourney(data).T)
+    return outcome
 
-# return dataframe with all game IDs and winners
 
-# repeat function N times, append output together
+if __name__ == "__main__":
+    final_outcome = repeat_simulation(10000)
+    final_outcome.to_csv("data/simulation/simulated_tournament_outcomes.csv", index=False)
 
