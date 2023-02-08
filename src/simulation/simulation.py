@@ -6,8 +6,23 @@ from tqdm import tqdm
 import warnings
 warnings.simplefilter(action='ignore')
 
+SEASON = 2022
+
 pred = pd.read_csv("data/clean/rectangular_predictions.csv")
 df = pd.read_csv("data/simulation/tournament_structure.csv")
+seeds = pd.read_csv("data/raw/MDataFiles_Stage2/MNCAATourneySeeds.csv")
+seeds["Seed"] = seeds["Seed"].str.extract("(\d+)").astype("int")
+
+
+def seed_bonus(winner, looser, seed_data=seeds):
+    """accepts 2 team IDs, one winner and one looser. returns the seed bonus that the winner recieves (if any)
+    bonus = high seed - low seed; only applies if low seed wins"""
+    winner_seed = seeds[(seeds["TeamID"] == winner) & (seeds["Season"] == SEASON)]["Seed"].values[0]
+    looser_seed = seeds[(seeds["TeamID"] == looser) & (seeds["Season"] == SEASON)]["Seed"].values[0]
+    if winner_seed > looser_seed:
+        return winner_seed - looser_seed
+    else:
+        return 0
 
 
 def select_winner(team_1, team_2, pred=pred):
@@ -33,7 +48,8 @@ def run_tourney(input_data):
         data.iloc[i, :] = row
     return data.set_index("ID")
 
-
+# I feel like this should return the winner and the looser, rather than team_1 and team_2;
+# that would be more compact and easier for the optimization model/creating the bonus matrix
 def repeat_simulation(n, data=df):
     for i in tqdm(range(n)):
         if i == 0:
