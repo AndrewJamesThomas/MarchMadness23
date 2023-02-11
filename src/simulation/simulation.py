@@ -25,6 +25,7 @@ def seed_bonus(winner, looser, seed_data=seeds):
         return 0
 
 
+
 def select_winner(team_1, team_2, pred=pred):
     """provides a winner from the given two teams. This is based on the predictions and a random number"""
     proba = pred.loc[pred["T1"] == int(team_1), str(int(team_2))].values[0]
@@ -48,24 +49,31 @@ def run_tourney(input_data):
         data.iloc[i, :] = row
     return data.set_index("ID")
 
-# I feel like this should return the winner and the looser, rather than team_1 and team_2;
-# that would be more compact and easier for the optimization model/creating the bonus matrix
+
 def repeat_simulation(n, data=df):
     for i in tqdm(range(n)):
         if i == 0:
             outcome = run_tourney(data)
+            outcome.loc[(outcome["winner"] == outcome["team_1"]), "looser"] = outcome.loc[(outcome["winner"] == outcome["team_1"]), "team_2"]
+            outcome.loc[(outcome["winner"] == outcome["team_2"]), "looser"] = outcome.loc[(outcome["winner"] == outcome["team_2"]), "team_1"]
+            outcome["bonus"] = [seed_bonus(i[6], i[7]) for i in outcome.values]
+
             winners = outcome.loc[:, "winner"]
-            team_1 = outcome.loc[:, "team_1"]
-            team_2 = outcome.loc[:, "team_2"]
+            loosers = outcome.loc[:, "looser"]
             base_points = outcome.loc[:, "base_points"]
+            bonus_points = outcome["bonus"]
         else:
             outcome = run_tourney(data)
-            winners = pd.concat([winners, outcome.loc[:, "winner"]], axis=1)
-            team_1 = pd.concat([team_1, outcome.loc[:, "team_1"]], axis=1)
-            team_2 = pd.concat([team_2, outcome.loc[:, "team_2"]], axis=1)
-            base_points = pd.concat([base_points, outcome.loc[:, "base_points"]], axis=1)
+            outcome.loc[(outcome["winner"] == outcome["team_1"]), "looser"] = outcome.loc[(outcome["winner"] == outcome["team_1"]), "team_2"]
+            outcome.loc[(outcome["winner"] == outcome["team_2"]), "looser"] = outcome.loc[(outcome["winner"] == outcome["team_2"]), "team_1"]
+            outcome["bonus"] = [seed_bonus(i[6], i[7]) for i in outcome.values]
 
-    return winners.T, team_1.T, team_2.T, base_points.T
+            winners = pd.concat([winners, outcome.loc[:, "winner"]], axis=1)
+            loosers = pd.concat([loosers, outcome.loc[:, "looser"]], axis=1)
+            base_points = pd.concat([base_points, outcome.loc[:, "base_points"]], axis=1)
+            bonus_points = pd.concat([bonus_points, outcome.loc[:, "bonus"]], axis=1)
+
+    return winners.T, loosers.T, base_points.T, bonus_points.T
 
 
 if __name__ == "__main__":
