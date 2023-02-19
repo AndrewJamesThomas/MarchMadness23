@@ -80,6 +80,10 @@ SolverFactory("glpk").solve(model)
 # save output
 pd.DataFrame([(model.dv[i](), i[0], i[1]) for i in model.dv])\
     .pivot(index=1, columns=2)[0]\
+    .reset_index()\
+    .merge(details, left_on=1, right_on="team_id")\
+    .drop([1, 'seed', 'team_id'], axis=1)\
+    .set_index("team_name")\
     .to_csv("data/results/optimal_results.csv", index=True)
 
 # export results distribution
