@@ -1,6 +1,4 @@
-
 import pandas as pd
-import numpy as np
 from pyomo.environ import *
 import warnings
 warnings.simplefilter(action='ignore')
@@ -21,22 +19,20 @@ looser = pd.read_csv("data/simulation/simulated_tournament_looser.csv")
 looser = looser.drop(['Unnamed: 0'], axis=1)
 
 teams = details["team_id"]
-games = winners.columns
-games = list([games + "_W"][0]) + list([games + "_L"][0])
+
+games_short = winners.columns
+games = list([games_short + "_W"][0]) + list([games_short + "_L"][0])
 
 sims = points.index
 
 
 def objective():
-    base_points = sum([sum([points.loc[i, g[:3]] *
-                            model.dv[(winners.loc[i, g[:3]], g)]
-                            for g in games if g[3:] != "_L"]) for i in sims])
-
-    bonus_points = sum([sum([bonus.loc[i, g[:3]] *
-                             model.dv[(looser.loc[i, g[:3]], g)]
-                             for g in games if g[3:] != "_W"]) for i in sims])
-
-    return base_points + bonus_points
+    return sum([sum([points.loc[i, g] *
+                     model.dv[(winners.loc[i, g], (g + "_W"))] +
+                     bonus.loc[i, g] *
+                     model.dv[(winners.loc[i, g], (g + "_W"))] *
+                     model.dv[(looser.loc[i, g], (g + "_L"))]
+                for g in games_short]) for i in sims])
 
 
 # initialize optimization model
@@ -44,7 +40,7 @@ model = ConcreteModel()
 
 # establish DVs and objective
 model.dv = Var(teams, games, domain=Binary)
-model.points = Objective(expr=objective(),
+model.points = Objective(expr=sum([sum([points.loc[i, g[:3]] * model.dv[(winners.loc[i, g[:3]], g)] for g in games if g[3:] != "_L"]) for i in sims]),
                          sense=maximize)
 
 # set up constraints
@@ -149,10 +145,11 @@ for t in teams:
 
 
 # Solver the problem
+print("Solving model")
 SolverFactory("glpk").solve(model)
 
-
 # save output
+print ("saving model")
 output = pd.DataFrame([(model.dv[i](), i[0], i[1]) for i in model.dv])\
     .pivot(index=1, columns=2)[0]\
     .reset_index()\
