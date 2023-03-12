@@ -30,25 +30,27 @@ def objective():
     return sum([sum([points.loc[i, g] *
                      model.dv[(winners.loc[i, g], (g + "_W"))] +
                      bonus.loc[i, g] *
-                     model.dv[(winners.loc[i, g], (g + "_W"))] *
                      model.dv[(looser.loc[i, g], (g + "_L"))]
                 for g in games_short]) for i in sims])
 
 
 # initialize optimization model
+
 model = ConcreteModel()
 
 # establish DVs and objective
 model.dv = Var(teams, games, domain=Binary)
-model.points = Objective(expr=sum([sum([points.loc[i, g[:3]] * model.dv[(winners.loc[i, g[:3]], g)] for g in games if g[3:] != "_L"]) for i in sims]),
+model.points = Objective(expr=objective(),
                          sense=maximize)
 
 # set up constraints
 model.cons = ConstraintList()
 for g in games:
+    # each game must have one and only one winner
     model.cons.add(sum([model.dv[t, g] for t in teams]) == 1)
 
 
+# each game winner must have also won the dependent games
 def tournament_rule_winner(model, team, primary_game, dependent_game_1, dependent_game_2):
     return model.dv[team, primary_game + "_W"] <= (model.dv[team, dependent_game_1 + "_W"] + model.dv[team, dependent_game_2 + "_W"])
 
@@ -57,10 +59,18 @@ def tournament_rule_looser(model, team, primary_game, dependent_game_1, dependen
     return model.dv[team, primary_game + "_L"] <= (model.dv[team, dependent_game_1 + "_W"] + model.dv[team, dependent_game_2 + "_W"])
 
 
+# Team can't be both the winner and the looser of a game
 def winner_looser_rule(model, team, game):
     w = game + "_W"
     l = game + "_L"
     return (model.dv[team, w] + model.dv[team, l]) <= 1
+
+
+# Round one teams can only be won by the actual teams
+def round_one_teams(game, team1, team2, model=model):
+    w = game + "_W"
+    l = game + "_L"
+    return (model.dv[team1, w] + model.dv[team1, l] + model.dv[team2, w] + model.dv[team2, l]) == 2
 
 
 for t in teams:
@@ -144,12 +154,49 @@ for t in teams:
     model.cons.add(tournament_rule_looser(model, t, "D24", "D17", "D18"))
 
 
+# establish round 1 games
+model.cons.add(round_one_teams("A11", 1211, 1209))
+model.cons.add(round_one_teams("A12", 1129, 1272))
+model.cons.add(round_one_teams("A13", 1163, 1308))
+model.cons.add(round_one_teams("A14", 1116, 1436))
+model.cons.add(round_one_teams("A15", 1104, 1323))
+model.cons.add(round_one_teams("A16", 1403, 1286))
+model.cons.add(round_one_teams("A17", 1277, 1172))
+model.cons.add(round_one_teams("A18", 1181, 1168))
+
+model.cons.add(round_one_teams("B11", 1124, 1313))
+model.cons.add(round_one_teams("B12", 1314, 1266))
+model.cons.add(round_one_teams("B13", 1388, 1231))
+model.cons.add(round_one_teams("B14", 1417, 1103))
+model.cons.add(round_one_teams("B15", 1400, 1439))
+model.cons.add(round_one_teams("B16", 1345, 1463))
+model.cons.add(round_one_teams("B17", 1293, 1362))
+model.cons.add(round_one_teams("B18", 1246, 1389))
+
+model.cons.add(round_one_teams("C11", 1112, 1460))
+model.cons.add(round_one_teams("C12", 1371, 1395))
+model.cons.add(round_one_teams("C13", 1222, 1412))
+model.cons.add(round_one_teams("C14", 1228, 1151))
+model.cons.add(round_one_teams("C15", 1161, 1276))
+model.cons.add(round_one_teams("C16", 1397, 1255))
+model.cons.add(round_one_teams("C17", 1326, 1260))
+model.cons.add(round_one_teams("C18", 1437, 1174))
+
+model.cons.add(round_one_teams("D11", 1242, 1411))
+model.cons.add(round_one_teams("D12", 1361, 1166))
+model.cons.add(round_one_teams("D13", 1234, 1350))
+model.cons.add(round_one_teams("D14", 1344, 1355))
+model.cons.add(round_one_teams("D15", 1261, 1235))
+model.cons.add(round_one_teams("D16", 1458, 1159))
+model.cons.add(round_one_teams("D17", 1425, 1274))
+model.cons.add(round_one_teams("D18", 1120, 1240))
+
 # Solver the problem
 print("Solving model")
 SolverFactory("glpk").solve(model)
 
 # save output
-print ("saving model")
+print("saving model")
 output = pd.DataFrame([(model.dv[i](), i[0], i[1]) for i in model.dv])\
     .pivot(index=1, columns=2)[0]\
     .reset_index()\
